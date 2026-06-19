@@ -34,7 +34,7 @@ async function run() {
         console.log("connected!")
 
         // MongoDB Collections
-        const db = client.db("ghuri");
+        const db = client.db("ghurni");
         const ticketsCollection = db.collection("tickets");
         const usersCollection = db.collection("user");
         const bookingsCollection = db.collection("bookings");
@@ -68,6 +68,43 @@ async function run() {
             req.user = user;
             next();
         }
+
+
+        // All tickets with search, filter, sort, pagination
+        app.get('/api/tickets', async (req, res) => {
+            const query = {};
+            if (req.query.from) query.from = { $regex: req.query.from, $options: 'i' };
+            if (req.query.to) query.to = { $regex: req.query.to, $options: 'i' };
+            if (req.query.type) query.transportType = req.query.type;
+            if (req.query.status) query.status = req.query.status;
+            if (req.query.minPrice || req.query.maxPrice) {
+                query.price = {};
+                if (req.query.minPrice) query.price.$gte = parseInt(req.query.minPrice);
+                if (req.query.maxPrice) query.price.$lte = parseInt(req.query.maxPrice);
+            }
+
+            let sortObj = { createdAt: -1 };
+            if (req.query.sort === 'price_asc') sortObj = { price: 1 };
+            if (req.query.sort === 'price_desc') sortObj = { price: -1 };
+            if (req.query.sort === 'rating') sortObj = { rating: -1 };
+            if (req.query.sort === 'departure') sortObj = { departureTime: 1 };
+
+            const page = parseInt(req.query.page) || 1;
+            const perPage = parseInt(req.query.perPage) || 9;
+            const skip = (page - 1) * perPage;
+
+            const total = await ticketsCollection.countDocuments(query);
+            const tickets = await ticketsCollection.find(query).sort(sortObj).skip(skip).limit(perPage).toArray();
+            res.send({ total, tickets });
+        });
+
+        // GET single ticket
+        app.get('/api/tickets/:id', async (req, res) => {
+            const result = await ticketsCollection.findOne({ _id: new ObjectId(req.params.id) });
+            res.send(result);
+        });
+
+
 
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
