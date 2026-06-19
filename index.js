@@ -33,10 +33,10 @@ async function run() {
         await client.db("admin").command({ ping: 1 });
         console.log("connected!")
 
-        // 👇 add after this
+        // MongoDB Collections
         const db = client.db("ghuri");
         const ticketsCollection = db.collection("tickets");
-        const usersCollection = db.collection("users");
+        const usersCollection = db.collection("user");
         const bookingsCollection = db.collection("bookings");
         const transactionsCollection = db.collection("transactions");
         const sessionCollection = db.collection("session");
@@ -51,7 +51,23 @@ async function run() {
             next();
         }
 
+        // session-based token verification middleware
+        const verifyToken = async (req, res, next) => {
+            const authHeader = req.headers?.authorization;
+            if (!authHeader) return res.status(401).send({ message: 'unauthorized access' });
 
+            const token = authHeader.split(' ')[1];
+            if (!token) return res.status(401).send({ message: 'unauthorized access' });
+
+            const session = await sessionCollection.findOne({ token });
+            if (!session) return res.status(401).send({ message: 'unauthorized access' });
+
+            const user = await usersCollection.findOne({ _id: session.userId });
+            if (!user) return res.status(401).send({ message: 'unauthorized access' });
+
+            req.user = user;
+            next();
+        }
 
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
