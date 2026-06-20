@@ -121,7 +121,7 @@ async function run() {
             }
         });
 
-        // POST booking
+        // POST booking with ticket availability check
         app.post('/api/bookings', verifyToken, async (req, res) => {
             try {
                 const booking = req.body;
@@ -166,6 +166,30 @@ async function run() {
             }
         });
 
+        // POST booking with ticket availability check
+        app.post('/api/bookings', verifyToken, async (req, res) => {
+            try {
+                const booking = req.body;
+
+                // check ticket exists and has enough quantity
+                const ticket = await ticketsCollection.findOne({ _id: new ObjectId(booking.ticketId) });
+                if (!ticket) return res.status(404).send({ message: 'Ticket not found' });
+                if (ticket.quantity < booking.quantity) {
+                    return res.status(400).send({ message: 'Not enough seats available' });
+                }
+
+                const newBooking = {
+                    ...booking,
+                    status: 'pending',
+                    createdAt: new Date()
+                };
+
+                const result = await bookingsCollection.insertOne(newBooking);
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
 
 
 
