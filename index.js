@@ -104,6 +104,8 @@ async function run() {
             res.send(result);
         });
 
+
+        /* Bookings APIs */
         // GET bookings
         app.get('/api/bookings', verifyToken, async (req, res) => {
             try {
@@ -129,6 +131,35 @@ async function run() {
                     createdAt: new Date()
                 };
                 const result = await bookingsCollection.insertOne(newBooking);
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // PATCH booking status
+        app.patch('/api/bookings/:id', verifyToken, async (req, res) => {
+            try {
+                const { status } = req.body;
+                const result = await bookingsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { status, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // DELETE booking (cancel)
+        app.delete('/api/bookings/:id', verifyToken, async (req, res) => {
+            try {
+                const booking = await bookingsCollection.findOne({ _id: new ObjectId(req.params.id) });
+                if (!booking) return res.status(404).send({ message: 'Booking not found' });
+                if (booking.status !== 'pending') {
+                    return res.status(400).send({ message: 'Cannot cancel after vendor has responded' });
+                }
+                const result = await bookingsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: err.message });
