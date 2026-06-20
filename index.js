@@ -180,8 +180,6 @@ async function run() {
 
 
 
-
-
         //Vendor APIs
         // POST add ticket (vendor)
         app.post('/api/tickets', verifyToken, verifyVendor, async (req, res) => {
@@ -222,6 +220,33 @@ async function run() {
                     _id: new ObjectId(req.params.id),
                     vendorEmail: req.user.email
                 });
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+
+        
+        // Admin APIs
+        // GET all users
+        app.get('/api/users', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const users = await usersCollection.find({}).toArray();
+                res.send(users);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // PATCH ticket verification status (admin approve/reject)
+        app.patch('/api/tickets/:id/verify', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { verificationStatus } = req.body;
+                const result = await ticketsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { verificationStatus, updatedAt: new Date() } }
+                );
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: err.message });
