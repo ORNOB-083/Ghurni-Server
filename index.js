@@ -124,22 +124,6 @@ async function run() {
             }
         });
 
-        // POST booking with ticket availability check
-        app.post('/api/bookings', verifyToken, async (req, res) => {
-            try {
-                const booking = req.body;
-                const newBooking = {
-                    ...booking,
-                    status: 'pending',
-                    createdAt: new Date()
-                };
-                const result = await bookingsCollection.insertOne(newBooking);
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
         // PATCH booking status
         app.patch('/api/bookings/:id', verifyToken, async (req, res) => {
             try {
@@ -200,7 +184,7 @@ async function run() {
 
         //Vendor APIs
         // POST add ticket (vendor)
-        app.post('/api/tickets', verifyToken, async (req, res) => {
+        app.post('/api/tickets', verifyToken, verifyVendor, async (req, res) => {
             try {
                 const ticket = req.body;
                 const newTicket = {
