@@ -73,6 +73,8 @@ async function run() {
         // All tickets with search, filter, sort, pagination
         app.get('/api/tickets', async (req, res) => {
             const query = {};
+            if (req.query.vendorEmail) query.vendorEmail = req.query.vendorEmail;
+            if (req.query.verificationStatus) query.verificationStatus = req.query.verificationStatus;
             if (req.query.from) query.from = { $regex: req.query.from, $options: 'i' };
             if (req.query.to) query.to = { $regex: req.query.to, $options: 'i' };
             if (req.query.type) query.transportType = req.query.type;
@@ -105,6 +107,7 @@ async function run() {
         });
 
 
+        //User APIs
         /* Bookings APIs */
         // GET bookings
         app.get('/api/bookings', verifyToken, async (req, res) => {
@@ -185,6 +188,56 @@ async function run() {
                 };
 
                 const result = await bookingsCollection.insertOne(newBooking);
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+
+
+
+
+        //Vendor APIs
+        // POST add ticket (vendor)
+        app.post('/api/tickets', verifyToken, async (req, res) => {
+            try {
+                const ticket = req.body;
+                const newTicket = {
+                    ...ticket,
+                    vendorEmail: req.user.email,
+                    vendorName: req.user.name,
+                    verificationStatus: 'pending',
+                    createdAt: new Date()
+                };
+                const result = await ticketsCollection.insertOne(newTicket);
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // PATCH update ticket (vendor)
+        app.patch('/api/tickets/:id', verifyToken, async (req, res) => {
+            try {
+                const updatedData = req.body;
+                const result = await ticketsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { ...updatedData, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // DELETE ticket (vendor)
+        app.delete('/api/tickets/:id', verifyToken, async (req, res) => {
+            try {
+                const result = await ticketsCollection.deleteOne({
+                    _id: new ObjectId(req.params.id),
+                    vendorEmail: req.user.email
+                });
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: err.message });
