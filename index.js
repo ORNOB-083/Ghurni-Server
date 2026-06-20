@@ -227,8 +227,14 @@ async function run() {
         });
 
 
-        
+
         // Admin APIs
+        // Verify Admin middleware if missing
+        const verifyAdmin = (req, res, next) => {
+            if (req.user?.role !== 'admin') return res.status(403).send({ message: 'forbidden' });
+            next();
+        }
+
         // GET all users
         app.get('/api/users', verifyToken, verifyAdmin, async (req, res) => {
             try {
@@ -246,6 +252,44 @@ async function run() {
                 const result = await ticketsCollection.updateOne(
                     { _id: new ObjectId(req.params.id) },
                     { $set: { verificationStatus, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // PATCH advertise ticket (admin)
+        app.patch('/api/tickets/:id/advertise', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { isAdvertised } = req.body;
+
+                // max 6 advertised tickets
+                if (isAdvertised) {
+                    const count = await ticketsCollection.countDocuments({ isAdvertised: true });
+                    if (count >= 6) {
+                        return res.status(400).send({ message: 'Maximum 6 tickets can be advertised at a time' });
+                    }
+                }
+
+                const result = await ticketsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { isAdvertised, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+
+        // Admin manage users - update role
+        app.patch('/api/users/:id/role', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { role } = req.body;
+                const result = await usersCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { role, updatedAt: new Date() } }
                 );
                 res.send(result);
             } catch (err) {
