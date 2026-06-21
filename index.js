@@ -355,6 +355,15 @@ async function run() {
             }
         });
 
+        // GET current user info
+        app.get('/api/users/me', verifyToken, async (req, res) => {
+            try {
+                res.send(req.user);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
 
 
 
