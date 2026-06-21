@@ -90,6 +90,7 @@ async function run() {
             if (req.query.sort === 'price_desc') sortObj = { price: -1 };
             if (req.query.sort === 'rating') sortObj = { rating: -1 };
             if (req.query.sort === 'departure') sortObj = { departureTime: 1 };
+            if (!req.query.vendorEmail) query.isHidden = { $ne: true };
 
             const page = parseInt(req.query.page) || 1;
             const perPage = parseInt(req.query.perPage) || 9;
@@ -325,6 +326,30 @@ async function run() {
 
                 const users = await usersCollection.find(query).sort({ createdAt: -1 }).toArray();
                 res.send(users);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // PATCH mark vendor as fraud
+        app.patch('/api/users/:id/fraud', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { isFraud } = req.body;
+                const result = await usersCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { isFraud, updatedAt: new Date() } }
+                );
+
+                // hide all tickets of this vendor if marked as fraud
+                if (isFraud) {
+                    const user = await usersCollection.findOne({ _id: new ObjectId(req.params.id) });
+                    await ticketsCollection.updateMany(
+                        { vendorEmail: user.email },
+                        { $set: { isHidden: true } }
+                    );
+                }
+
+                res.send(result);
             } catch (err) {
                 res.status(500).send({ message: err.message });
             }
