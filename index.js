@@ -226,6 +226,20 @@ async function run() {
             }
         });
 
+        // GET vendor bookings with ticket info
+        app.get('/api/vendor/bookings', verifyToken, verifyVendor, async (req, res) => {
+            try {
+                const query = {};
+                if (req.query.vendorEmail) query.vendorEmail = req.query.vendorEmail;
+                if (req.query.status) query.status = req.query.status;
+
+                const bookings = await bookingsCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.send(bookings);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
 
 
         // Admin APIs
