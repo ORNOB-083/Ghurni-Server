@@ -311,6 +311,25 @@ async function run() {
             }
         });
 
+        // GET all users (admin only)
+        app.get('/api/users', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const query = {};
+                if (req.query.role) query.role = req.query.role;
+                if (req.query.search) {
+                    query.$or = [
+                        { name: { $regex: req.query.search, $options: 'i' } },
+                        { email: { $regex: req.query.search, $options: 'i' } }
+                    ];
+                }
+
+                const users = await usersCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.send(users);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
 
 
 
