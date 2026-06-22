@@ -101,6 +101,18 @@ async function run() {
             res.send({ total, tickets });
         });
 
+        // GET advertised tickets
+        app.get('/api/tickets/advertised', async (req, res) => {
+            try {
+                const tickets = await ticketsCollection
+                    .find({ isAdvertised: true, verificationStatus: 'approved' })
+                    .toArray();
+                res.send(tickets);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
         // GET single ticket
         app.get('/api/tickets/:id', async (req, res) => {
             const result = await ticketsCollection.findOne({ _id: new ObjectId(req.params.id) });
@@ -297,6 +309,27 @@ async function run() {
             }
         });
 
+        // PATCH advertise/unadvertise ticket (admin)
+        app.patch('/api/tickets/:id/advertise', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { isAdvertised } = req.body;
+
+                if (isAdvertised) {
+                    const count = await ticketsCollection.countDocuments({ isAdvertised: true });
+                    if (count >= 6) {
+                        return res.status(400).send({ message: 'Maximum 6 tickets can be advertised at a time' });
+                    }
+                }
+
+                const result = await ticketsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { isAdvertised, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
 
         // Admin manage users - update role
         app.patch('/api/users/:id/role', verifyToken, verifyAdmin, async (req, res) => {
