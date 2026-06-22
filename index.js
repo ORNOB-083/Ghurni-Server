@@ -398,6 +398,43 @@ async function run() {
         });
 
 
+        // PATCH booking payment status
+        app.patch('/api/bookings/:id/pay', async (req, res) => {
+            try {
+                const { status, transactionId, amount, paidAt } = req.body;
+
+                const bookingResult = await bookingsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { status, transactionId, amount, paidAt, updatedAt: new Date() } }
+                );
+
+                const booking = await bookingsCollection.findOne({ _id: new ObjectId(req.params.id) });
+                if (booking) {
+                    await ticketsCollection.updateOne(
+                        { _id: new ObjectId(booking.ticketId) },
+                        { $inc: { quantity: -booking.quantity } }
+                    );
+
+                    await transactionsCollection.insertOne({
+                        userId: booking.userId,
+                        userEmail: booking.userEmail,
+                        ticketId: booking.ticketId,
+                        ticketTitle: booking.ticketTitle,
+                        bookingId: req.params.id,
+                        transactionId,
+                        amount,
+                        paidAt,
+                        createdAt: new Date()
+                    });
+                }
+
+                res.send(bookingResult);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+
 
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
