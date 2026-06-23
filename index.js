@@ -70,7 +70,7 @@ async function run() {
         }
 
 
-        // All tickets with search, filter, sort, pagination
+        // 1. All tickets with search, filter, sort, pagination
         app.get('/api/tickets', async (req, res) => {
             const query = {};
             if (req.query.vendorEmail) query.vendorEmail = req.query.vendorEmail;
@@ -101,7 +101,7 @@ async function run() {
             res.send({ total, tickets });
         });
 
-        // GET advertised tickets
+        // 2. GET advertised tickets
         app.get('/api/tickets/advertised', async (req, res) => {
             try {
                 const tickets = await ticketsCollection
@@ -113,7 +113,7 @@ async function run() {
             }
         });
 
-        // GET single ticket
+        // 3. GET single ticket
         app.get('/api/tickets/:id', async (req, res) => {
             const result = await ticketsCollection.findOne({ _id: new ObjectId(req.params.id) });
             res.send(result);
@@ -122,51 +122,7 @@ async function run() {
 
         //User APIs
         /* Bookings APIs */
-        // GET bookings
-        app.get('/api/bookings', verifyToken, async (req, res) => {
-            try {
-                const query = {};
-                if (req.query.userId) query.userId = req.query.userId;
-                if (req.query.vendorEmail) query.vendorEmail = req.query.vendorEmail;
-                if (req.query.status) query.status = req.query.status;
-
-                const bookings = await bookingsCollection.find(query).sort({ createdAt: -1 }).toArray();
-                res.send(bookings);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // PATCH booking status
-        app.patch('/api/bookings/:id', verifyToken, async (req, res) => {
-            try {
-                const { status } = req.body;
-                const result = await bookingsCollection.updateOne(
-                    { _id: new ObjectId(req.params.id) },
-                    { $set: { status, updatedAt: new Date() } }
-                );
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // DELETE booking (cancel)
-        app.delete('/api/bookings/:id', verifyToken, async (req, res) => {
-            try {
-                const booking = await bookingsCollection.findOne({ _id: new ObjectId(req.params.id) });
-                if (!booking) return res.status(404).send({ message: 'Booking not found' });
-                if (booking.status !== 'pending') {
-                    return res.status(400).send({ message: 'Cannot cancel after vendor has responded' });
-                }
-                const result = await bookingsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // POST booking with ticket availability check
+        // 4. POST booking with ticket availability check
         app.post('/api/bookings', verifyToken, async (req, res) => {
             try {
                 const booking = req.body;
@@ -191,58 +147,11 @@ async function run() {
             }
         });
 
-
-
-        //Vendor APIs
-        // POST add ticket (vendor)
-        app.post('/api/tickets', verifyToken, verifyVendor, async (req, res) => {
-            try {
-                const ticket = req.body;
-                const newTicket = {
-                    ...ticket,
-                    vendorEmail: req.user.email,
-                    vendorName: req.user.name,
-                    verificationStatus: 'pending',
-                    createdAt: new Date()
-                };
-                const result = await ticketsCollection.insertOne(newTicket);
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // PATCH update ticket (vendor)
-        app.patch('/api/tickets/:id', verifyToken, async (req, res) => {
-            try {
-                const updatedData = req.body;
-                const result = await ticketsCollection.updateOne(
-                    { _id: new ObjectId(req.params.id) },
-                    { $set: { ...updatedData, updatedAt: new Date() } }
-                );
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // DELETE ticket (vendor)
-        app.delete('/api/tickets/:id', verifyToken, async (req, res) => {
-            try {
-                const result = await ticketsCollection.deleteOne({
-                    _id: new ObjectId(req.params.id),
-                    vendorEmail: req.user.email
-                });
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // GET vendor bookings with ticket info
-        app.get('/api/vendor/bookings', verifyToken, verifyVendor, async (req, res) => {
+        // 5. GET bookings
+        app.get('/api/bookings', verifyToken, async (req, res) => {
             try {
                 const query = {};
+                if (req.query.userId) query.userId = req.query.userId;
                 if (req.query.vendorEmail) query.vendorEmail = req.query.vendorEmail;
                 if (req.query.status) query.status = req.query.status;
 
@@ -253,32 +162,13 @@ async function run() {
             }
         });
 
-
-
-        // Admin APIs
-        // Verify Admin middleware if missing
-        const verifyAdmin = (req, res, next) => {
-            if (req.user?.role !== 'admin') return res.status(403).send({ message: 'forbidden' });
-            next();
-        }
-
-        // GET all users
-        app.get('/api/users', verifyToken, verifyAdmin, async (req, res) => {
+        // 6. PATCH booking status
+        app.patch('/api/bookings/:id', verifyToken, async (req, res) => {
             try {
-                const users = await usersCollection.find({}).toArray();
-                res.send(users);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // PATCH ticket verification status (admin approve/reject)
-        app.patch('/api/tickets/:id/verify', verifyToken, verifyAdmin, async (req, res) => {
-            try {
-                const { verificationStatus } = req.body;
-                const result = await ticketsCollection.updateOne(
+                const { status } = req.body;
+                const result = await bookingsCollection.updateOne(
                     { _id: new ObjectId(req.params.id) },
-                    { $set: { verificationStatus, updatedAt: new Date() } }
+                    { $set: { status, updatedAt: new Date() } }
                 );
                 res.send(result);
             } catch (err) {
@@ -286,119 +176,22 @@ async function run() {
             }
         });
 
-        // PATCH advertise ticket (admin)
-        app.patch('/api/tickets/:id/advertise', verifyToken, verifyAdmin, async (req, res) => {
+        // 7. DELETE booking (cancel)
+        app.delete('/api/bookings/:id', verifyToken, async (req, res) => {
             try {
-                const { isAdvertised } = req.body;
-
-                // max 6 advertised tickets
-                if (isAdvertised) {
-                    const count = await ticketsCollection.countDocuments({ isAdvertised: true });
-                    if (count >= 6) {
-                        return res.status(400).send({ message: 'Maximum 6 tickets can be advertised at a time' });
-                    }
+                const booking = await bookingsCollection.findOne({ _id: new ObjectId(req.params.id) });
+                if (!booking) return res.status(404).send({ message: 'Booking not found' });
+                if (booking.status !== 'pending') {
+                    return res.status(400).send({ message: 'Cannot cancel after vendor has responded' });
                 }
-
-                const result = await ticketsCollection.updateOne(
-                    { _id: new ObjectId(req.params.id) },
-                    { $set: { isAdvertised, updatedAt: new Date() } }
-                );
+                const result = await bookingsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
                 res.send(result);
             } catch (err) {
                 res.status(500).send({ message: err.message });
             }
         });
 
-        // PATCH advertise/unadvertise ticket (admin)
-        app.patch('/api/tickets/:id/advertise', verifyToken, verifyAdmin, async (req, res) => {
-            try {
-                const { isAdvertised } = req.body;
-
-                if (isAdvertised) {
-                    const count = await ticketsCollection.countDocuments({ isAdvertised: true });
-                    if (count >= 6) {
-                        return res.status(400).send({ message: 'Maximum 6 tickets can be advertised at a time' });
-                    }
-                }
-
-                const result = await ticketsCollection.updateOne(
-                    { _id: new ObjectId(req.params.id) },
-                    { $set: { isAdvertised, updatedAt: new Date() } }
-                );
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // Admin manage users - update role
-        app.patch('/api/users/:id/role', verifyToken, verifyAdmin, async (req, res) => {
-            try {
-                const { role } = req.body;
-                const result = await usersCollection.updateOne(
-                    { _id: new ObjectId(req.params.id) },
-                    { $set: { role, updatedAt: new Date() } }
-                );
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // GET all users (admin only)
-        app.get('/api/users', verifyToken, verifyAdmin, async (req, res) => {
-            try {
-                const query = {};
-                if (req.query.role) query.role = req.query.role;
-                if (req.query.search) {
-                    query.$or = [
-                        { name: { $regex: req.query.search, $options: 'i' } },
-                        { email: { $regex: req.query.search, $options: 'i' } }
-                    ];
-                }
-
-                const users = await usersCollection.find(query).sort({ createdAt: -1 }).toArray();
-                res.send(users);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // PATCH mark vendor as fraud
-        app.patch('/api/users/:id/fraud', verifyToken, verifyAdmin, async (req, res) => {
-            try {
-                const { isFraud } = req.body;
-                const result = await usersCollection.updateOne(
-                    { _id: new ObjectId(req.params.id) },
-                    { $set: { isFraud, updatedAt: new Date() } }
-                );
-
-                // hide all tickets of this vendor if marked as fraud
-                if (isFraud) {
-                    const user = await usersCollection.findOne({ _id: new ObjectId(req.params.id) });
-                    await ticketsCollection.updateMany(
-                        { vendorEmail: user.email },
-                        { $set: { isHidden: true } }
-                    );
-                }
-
-                res.send(result);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-        // GET current user info
-        app.get('/api/users/me', verifyToken, async (req, res) => {
-            try {
-                res.send(req.user);
-            } catch (err) {
-                res.status(500).send({ message: err.message });
-            }
-        });
-
-
-        // PATCH booking payment status
+        // 8. PATCH booking payment status
         app.patch('/api/bookings/:id/pay', async (req, res) => {
             try {
                 const { status, transactionId, amount, paidAt } = req.body;
@@ -434,21 +227,172 @@ async function run() {
             }
         });
 
-        // GET transactions
-        app.get('/api/transactions', verifyToken, async (req, res) => {
+
+        //Vendor APIs
+        // 9. POST add ticket (vendor)
+        app.post('/api/tickets', verifyToken, verifyVendor, async (req, res) => {
+            try {
+                const ticket = req.body;
+                const newTicket = {
+                    ...ticket,
+                    vendorEmail: req.user.email,
+                    vendorName: req.user.name,
+                    verificationStatus: 'pending',
+                    createdAt: new Date()
+                };
+                const result = await ticketsCollection.insertOne(newTicket);
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // 10. PATCH update ticket (vendor)
+        app.patch('/api/tickets/:id', verifyToken, async (req, res) => {
+            try {
+                const updatedData = req.body;
+                const result = await ticketsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { ...updatedData, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // 11. DELETE ticket (vendor)
+        app.delete('/api/tickets/:id', verifyToken, async (req, res) => {
+            try {
+                const result = await ticketsCollection.deleteOne({
+                    _id: new ObjectId(req.params.id),
+                    vendorEmail: req.user.email
+                });
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // 12. GET vendor bookings with ticket info
+        app.get('/api/vendor/bookings', verifyToken, verifyVendor, async (req, res) => {
             try {
                 const query = {};
-                if (req.query.userId) query.userId = req.query.userId;
-                if (req.query.userEmail) query.userEmail = req.query.userEmail;
-                const transactions = await transactionsCollection.find(query).sort({ createdAt: -1 }).toArray();
-                res.send(transactions);
+                if (req.query.vendorEmail) query.vendorEmail = req.query.vendorEmail;
+                if (req.query.status) query.status = req.query.status;
+
+                const bookings = await bookingsCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.send(bookings);
             } catch (err) {
                 res.status(500).send({ message: err.message });
             }
         });
 
 
-        // Admin stats
+
+        // Admin APIs
+        // Verify Admin middleware if missing
+        const verifyAdmin = (req, res, next) => {
+            if (req.user?.role !== 'admin') return res.status(403).send({ message: 'forbidden' });
+            next();
+        }
+
+        // 13. GET all users (admin only) – with search, role filtering, and sorting
+        app.get('/api/users', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const query = {};
+                if (req.query.role) query.role = req.query.role;
+                if (req.query.search) {
+                    query.$or = [
+                        { name: { $regex: req.query.search, $options: 'i' } },
+                        { email: { $regex: req.query.search, $options: 'i' } }
+                    ];
+                }
+
+                const users = await usersCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.send(users);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // 14. PATCH ticket verification status (admin approve/reject)
+        app.patch('/api/tickets/:id/verify', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { verificationStatus } = req.body;
+                const result = await ticketsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { verificationStatus, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // 15. PATCH advertise ticket (admin)
+        app.patch('/api/tickets/:id/advertise', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { isAdvertised } = req.body;
+
+                // max 6 advertised tickets
+                if (isAdvertised) {
+                    const count = await ticketsCollection.countDocuments({ isAdvertised: true });
+                    if (count >= 6) {
+                        return res.status(400).send({ message: 'Maximum 6 tickets can be advertised at a time' });
+                    }
+                }
+
+                const result = await ticketsCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { isAdvertised, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+
+        // 16. Admin manage users - update role
+        app.patch('/api/users/:id/role', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { role } = req.body;
+                const result = await usersCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { role, updatedAt: new Date() } }
+                );
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // 17. PATCH mark vendor as fraud
+        app.patch('/api/users/:id/fraud', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const { isFraud } = req.body;
+                const result = await usersCollection.updateOne(
+                    { _id: new ObjectId(req.params.id) },
+                    { $set: { isFraud, updatedAt: new Date() } }
+                );
+
+                // hide all tickets of this vendor if marked as fraud
+                if (isFraud) {
+                    const user = await usersCollection.findOne({ _id: new ObjectId(req.params.id) });
+                    await ticketsCollection.updateMany(
+                        { vendorEmail: user.email },
+                        { $set: { isHidden: true } }
+                    );
+                }
+
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+        // 18. Admin stats
         app.get('/api/admin/stats', verifyToken, verifyAdmin, async (req, res) => {
             try {
                 const [
@@ -481,7 +425,27 @@ async function run() {
             }
         });
 
+        // 19. GET transactions
+        app.get('/api/transactions', verifyToken, async (req, res) => {
+            try {
+                const query = {};
+                if (req.query.userId) query.userId = req.query.userId;
+                if (req.query.userEmail) query.userEmail = req.query.userEmail;
+                const transactions = await transactionsCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.send(transactions);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
 
+        // 20. GET current user info
+        app.get('/api/users/me', verifyToken, async (req, res) => {
+            try {
+                res.send(req.user);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
 
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
