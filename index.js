@@ -434,6 +434,19 @@ async function run() {
             }
         });
 
+        // GET transactions
+        app.get('/api/transactions', verifyToken, async (req, res) => {
+            try {
+                const query = {};
+                if (req.query.userId) query.userId = req.query.userId;
+                if (req.query.userEmail) query.userEmail = req.query.userEmail;
+                const transactions = await transactionsCollection.find(query).sort({ createdAt: -1 }).toArray();
+                res.send(transactions);
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
 
 
 
