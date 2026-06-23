@@ -448,6 +448,40 @@ async function run() {
         });
 
 
+        // Admin stats
+        app.get('/api/admin/stats', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                const [
+                    totalUsers,
+                    totalVendors,
+                    totalTickets,
+                    totalBookings,
+                    totalTransactions,
+                ] = await Promise.all([
+                    usersCollection.countDocuments({ role: 'user' }),
+                    usersCollection.countDocuments({ role: 'vendor' }),
+                    ticketsCollection.countDocuments(),
+                    bookingsCollection.countDocuments(),
+                    transactionsCollection.countDocuments(),
+                ]);
+
+                const transactions = await transactionsCollection.find({}).toArray();
+                const totalRevenue = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+                res.send({
+                    totalUsers,
+                    totalVendors,
+                    totalTickets,
+                    totalBookings,
+                    totalRevenue,
+                    totalTransactions,
+                });
+            } catch (err) {
+                res.status(500).send({ message: err.message });
+            }
+        });
+
+
 
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
