@@ -4,10 +4,16 @@ const app = express()
 const port = process.env.PORT || 8000
 require('dotenv').config()
 
-app.use(cors())
-app.use(express.json())
-
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+// const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
+
+app.use(cors(
+    {
+        origin: [process.env.CLIENT_URL],
+        credentials: true
+    }
+))
+app.use(express.json())
 
 
 app.get('/', (req, res) => {
@@ -25,10 +31,12 @@ const client = new MongoClient(uri, {
     }
 });
 
+// const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`));
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("connected!")
@@ -57,6 +65,7 @@ async function run() {
             if (!authHeader) return res.status(401).send({ message: 'unauthorized access' });
 
             const token = authHeader.split(' ')[1];
+            // console.log(token)
             if (!token) return res.status(401).send({ message: 'unauthorized access' });
 
             const session = await sessionCollection.findOne({ token });
