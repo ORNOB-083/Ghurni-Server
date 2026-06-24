@@ -8,10 +8,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 // const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 
 app.use(cors(
-    {
+    /* {
         origin: [process.env.CLIENT_URL, 'https://ghurni.vercel.app'],
         credentials: true
-    }
+    } */
 ))
 app.use(express.json())
 
