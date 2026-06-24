@@ -8,10 +8,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 // const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 
 app.use(cors(
-    /* {
+    {
         origin: [process.env.CLIENT_URL, 'https://ghurni.vercel.app'],
         credentials: true
-    } */
+    }
 ))
 app.use(express.json())
 
@@ -80,6 +80,25 @@ const verifyToken = async (req, res, next) => {
     req.user = user;
     next();
 }
+
+
+/* const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers?.authorization;
+    if (!authHeader) return res.status(401).send({ message: 'unauthorized access' });
+
+    const token = authHeader.split(' ')[1];
+    if (!token) return res.status(401).send({ message: 'unauthorized access' });
+
+    try {
+        const { payload } = await jwtVerify(token, JWKS);
+        const user = await usersCollection.findOne({ email: payload.email });
+        if (!user) return res.status(401).send({ message: 'unauthorized access' });
+        req.user = user;
+        next();
+    } catch {
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+}; */
 
 
 // 1. All tickets with search, filter, sort, pagination
