@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express()
 const port = process.env.PORT || 8000
 require('dotenv').config()
-
+const PDFDocument = require('pdfkit');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 // const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 
@@ -474,6 +474,60 @@ app.get('/api/users/me', verifyToken, async (req, res) => {
     try {
         res.send(req.user);
     } catch (err) {
+        res.status(500).send({ message: err.message });
+    }
+});
+
+// PDF Ticket Download Route
+app.get('/api/bookings/:id/ticket-pdf', verifyToken, async (req, res) => {
+    try {
+        const bookingId = req.params.id;
+        const booking = await bookingsCollection.findOne({ _id: new ObjectId(bookingId) });
+        if (!booking) return res.status(404).send({ message: 'Booking not found' });
+
+        if (booking.userId !== req.user._id.toString()) {
+            return res.status(403).send({ message: 'Unauthorized to download this ticket' });
+        }
+
+        const ticket = await ticketsCollection.findOne({ _id: new ObjectId(booking.ticketId) });
+        if (!ticket) return res.status(404).send({ message: 'Ticket not found' });
+
+        const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=ghurni-ticket-${bookingId}.pdf`);
+        doc.pipe(res);
+        doc.fillColor('#444444').fontSize(25).text('Ghurni', 50, 57);
+        doc.fontSize(10).text('Ticket Confirmation', 200, 50, { align: 'right' });
+        doc.moveDown();
+        doc.strokeColor('#aaaaaa').lineWidth(1).moveTo(50, 90).lineTo(550, 90).stroke();
+
+        doc.fontSize(12).text(`Booking ID: ${bookingId}`, 50, 110);
+
+        doc.fontSize(16).font('Helvetica-Bold').text('Passenger Details', 50, 150);
+        doc.font('Helvetica').fontSize(12);
+        doc.text(`Name: ${req.user.name}`, 50, 175);
+        doc.text(`Email: ${req.user.email}`, 50, 195);
+
+        doc.fontSize(16).font('Helvetica-Bold').text('Journey Details', 50, 235);
+        doc.font('Helvetica').fontSize(12);
+        doc.text(`Ticket: ${ticket.ticketTitle || ticket.title || 'N/A'}`, 50, 260);
+        doc.text(`Route: ${ticket.from} -> ${ticket.to}`, 50, 280);
+        doc.text(`Transport: ${ticket.transportType}`, 50, 300);
+        doc.text(`Seats Booked: ${booking.quantity}`, 50, 320);
+
+        doc.fontSize(16).font('Helvetica-Bold').text('Payment Info', 50, 360);
+        doc.font('Helvetica').fontSize(12);
+
+        const totalPaid = (ticket.price || 0) * (booking.quantity || 0);
+        doc.text(`Total Paid: BDT ${totalPaid.toLocaleString()}`, 50, 385);
+        doc.text(`Transaction ID: ${booking.transactionId || 'N/A'}`, 50, 405);
+
+        doc.fontSize(10).text('Safe travels with Ghurni!', 50, 550, { align: 'center' });
+
+        doc.end();
+    } catch (err) {
+        console.error('PDF Gen Error:', err);
         res.status(500).send({ message: err.message });
     }
 });
